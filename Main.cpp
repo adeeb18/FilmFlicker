@@ -227,7 +227,7 @@ public:
 
 		}
 	}
-	double calculateSI(Vertex* v1, Vertex* v2, double edgeWeight, int depth) {
+	double calculateSIB(Vertex* v1, Vertex* v2, double edgeWeight, int depth) {
 
 		double Adult = 1;
 		double Runtime = 3;
@@ -265,11 +265,60 @@ public:
 		SI = (Genre * Adult * Runtime * People) / (Seperations*4);
 		return SI;
 	}
+	double calculateSID(Vertex* v1, Vertex* v2) {
+		
+		double Adult = 1;
+		double Runtime = 3;
+		double Genre = 1;
+		double People = 1;
+		double SI = 1;
+
+		if (v1->title == v2->title) {
+			return 0;
+		}
+
+		if (v1->isAdult != -1 && v2->isAdult != -1) {
+			if (v1->isAdult != v2->isAdult) {
+				Adult = 0;
+			}
+		}
+		if (v1->runtime != -1 && v2->runtime != -1) {
+			if (abs(v1->runtime - v2->runtime) < 20) {
+				Runtime = 3;
+			}
+			else if (abs(v1->runtime - v2->runtime) < 40) {
+				Runtime = 2;
+			}
+			else if (abs(v1->runtime - v2->runtime) < 60) {
+				Runtime = 1;
+			}
+			else if (abs(v1->runtime - v2->runtime) >= 60) {
+				Runtime = 0;
+			}
+		}
+		string tid2 = movieNames[v2->title];
+		if (v1->edges.find(tid2) != v1->edges.end()) {
+			People = v1->edges[tid2].second;
+		}
+
+		vector<string> g1 = v1->genres;
+		vector<string> g2 = v1->genres;
+		vector<string> g(g1.size() + g2.size());
+		vector<string>::iterator it;
+		it = set_intersection(g1.begin(), g.end(), g2.begin(), g2.end(), g.begin());
+		Genre = (double)(g.size()) * 15;
+
+		SI = (Genre * Adult * Runtime * People);
+		return SI;
+
+
+	};
+
 
 	vector<pair<string,double>> BreadthFirst(string input) {
 		unordered_set<string> visited;
 		string currentID = movieNames[input];
-		//Vertex* root = allMovies[currentID];
+		Vertex* root = allMovies[currentID];
 		Vertex* current = allMovies[currentID];
 
 		queue<Vertex*> q;
@@ -280,7 +329,10 @@ public:
 
 		priority_queue < pair<double, string>, vector<pair<double, string>>, compareFreq> pq;
 
+		int count = 0;
 		while (!q.empty()) {
+			count++;
+			if (count % 500 == 0) { cout << count << endl; }
 			current = q.front();
 			q.pop();
 			if (current == nullptr) {
@@ -294,7 +346,7 @@ public:
 					if (visited.find(iter.first) == visited.end()) {
 						visited.insert(iter.first);
 						q.push(iter.second.first);
-						double currentSI = calculateSI(current, iter.second.first, iter.second.second, currentDepth);
+						double currentSI = calculateSIB(root, iter.second.first, iter.second.second, currentDepth);
 						pair<double, string> currPair(currentSI, iter.second.first->title);
 						pq.push(currPair);
 					}
@@ -315,40 +367,40 @@ public:
 		}
 		return returnVec;
 	}
+
 	vector<pair<string, double>> DepthFirst(string input) {
 		unordered_set<string> visited;
 		string currentID = movieNames[input];
+
 		Vertex* current = allMovies[currentID];
+		Vertex* root = allMovies[currentID];
 
 		stack<Vertex*> s;
 		s.push(current);
 		visited.insert(currentID);
-		s.push(nullptr);
-		int currentDepth = 1;
 
 		priority_queue < pair<double, string>, vector<pair<double, string>>, compareFreq> pq;
 
-
+		int count = 0;
 		while (!s.empty()) {
-			current = s.top();
-			s.pop();
-			if (current == nullptr) {
-				currentDepth++;
-				s.push(nullptr);
-				if (s.top() == nullptr) { break; }
-			}
-			else {
-				for (auto iter : current->edges) {
-					string edgeID = iter.first;
-					if (visited.find(iter.first) == visited.end()) {
-						visited.insert(iter.first);
-						s.push(iter.second.first);
-						double currentSI = calculateSI(current, iter.second.first, iter.second.second, currentDepth);
-						pair<double, string> currPair(currentSI, iter.second.first->title);
-						pq.push(currPair);
-					}
+			count++;
+			if (count % 500 == 0) { cout << count << endl; }
+			current = s.top();	
+
+			for (auto iter : current->edges) {
+				string edgeID = iter.first;
+				if (visited.find(iter.first) == visited.end()) {
+					visited.insert(iter.first);
+					s.push(iter.second.first);
+					
 				}
 			}
+
+			Vertex* calcSI = s.top();
+			double currentSI = calculateSID(root, calcSI);
+			pair<double, string> currPair(currentSI, calcSI->title);
+			pq.push(currPair);
+			s.pop();
 		}
 
 
@@ -378,23 +430,51 @@ int main() {
 	string filepath2 = "Small_process.tsv";
 	filmFlicker.addEdge(filepath2);
 
-	filmFlicker.printVertices();
+	//filmFlicker.printVertices();
 
-	clock_t c_start = clock();
-	
-	vector<pair<string, double>> similarMovies = filmFlicker.BreadthFirst("Bohemios");
+	string movieInput = "";
 
-	clock_t c_end = clock();
+	ofstream MovieFile;
+	MovieFile.open("MovieFile.txt");
+	MovieFile.close();
+	ofstream TimeFile;
+	TimeFile.open("TimeFile.txt");
+	TimeFile.close();
 
-	cout << (c_end - c_start) / CLOCKS_PER_SEC << endl;
+	while (true) {
 
-	
-	for (auto iter : similarMovies) {
-		cout << "movie: " << iter.first << " SID: " << iter.second << endl;
+		cout << "Input Movie: " << endl;
+		getline(cin, movieInput);
+		remove("MovieFile.txt");
+		remove("TimeFile.txt");
+
+		clock_t c_start = clock();
+		vector<pair<string, double>> similarMoviesB = filmFlicker.BreadthFirst(movieInput);
+		clock_t c_end = clock();
+
+		MovieFile.open("MovieFile.txt");
+		TimeFile.open("TimeFile.txt");
+		TimeFile << (c_end - c_start) / CLOCKS_PER_SEC << endl;
+		
+
+		for (auto iter : similarMoviesB) {
+			MovieFile << iter.first << endl;
+		}
+
+		clock_t c_start2 = clock();
+
+		vector<pair<string, double>> similarMoviesD = filmFlicker.DepthFirst(movieInput);
+
+		clock_t c_end2 = clock();
+
+		TimeFile << (c_end2 - c_start2) / CLOCKS_PER_SEC << endl;
+
+		TimeFile.close();
+		MovieFile.close();
+
+
+
 	}
-	
-	
-
 
 	return 0;
 };
