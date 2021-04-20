@@ -3,8 +3,10 @@
 import glob
 import wx
 from subprocess import Popen, PIPE, STDOUT
+# Initializes the c++ code
 p = Popen(['COP3503Project3.exe'], stdin = PIPE, stderr = PIPE)
 
+# GUI class
 class FilmsPanel(wx.Panel):
     def __init__(self, parent):
         super().__init__(parent)
@@ -35,7 +37,7 @@ class FilmsPanel(wx.Panel):
         main_sizer.Add(self.list_ctrl, 0, wx.ALL | wx.CENTER, 30)
         self.SetSizer(main_sizer)
         
-        
+    # Search button    
     def button_press(self, event):
         p.communicate(input=self.text_ctrl.GetValue().encode('utf-8'))
         self.films = dict()
@@ -43,7 +45,7 @@ class FilmsPanel(wx.Panel):
             movie_list = file.readlines()
             for x, line in enumerate(movie_list):
                 self.films[x] = wx.StaticText(self, label = line, pos = (550, 20*x + 250))
-
+    # Timing stats button
     def button_press2(self, event):
         with open("TimeFile.txt") as file:
             info = file.readlines()
@@ -55,7 +57,7 @@ class FilmsPanel(wx.Panel):
             self.bfs = wx.StaticText(self, label = line1, pos = (640, 695))
             self.units1 = wx.StaticText(self, label = " seconds ", pos = (700, 675))
             self.units2 = wx.StaticText(self, label = " seconds ", pos = (700, 695))
-
+# Clear button
     def button_press_clear(self, event):
         for key in self.films:
             self.films[key].Destroy()
@@ -66,7 +68,7 @@ class FilmsPanel(wx.Panel):
         self.units1.Destroy()
         self.units2.Destroy()
             
-
+# Background and construction of GUI
 class MyFrame(wx.Frame):    
     def __init__(self):
         super().__init__(parent=None, title='FilmFlicker')
@@ -77,7 +79,7 @@ class MyFrame(wx.Frame):
 
         self.Show()
 
-    
+# Running code    
 if __name__ == '__main__':
     app = wx.App()
     frame = MyFrame()
